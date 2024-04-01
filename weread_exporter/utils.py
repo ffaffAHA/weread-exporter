@@ -108,6 +108,6 @@ def wr_hash(s):
 
 def save_to_png(img_path, png_path):
     from PIL import Image
-
+    img = img.convert('RGB')
     img = Image.open(img_path)
     img.save(png_path)

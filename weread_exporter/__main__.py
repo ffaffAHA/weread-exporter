@@ -37,7 +37,7 @@ async def async_main():
         "--load-interval",
         help="load chapter page interval time",
         type=int,
-        default=10,
+        default=30,
     )
     parser.add_argument(
         "--css-file",

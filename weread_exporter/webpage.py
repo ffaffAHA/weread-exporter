@@ -155,10 +155,6 @@ class WeReadWebPage(object):
                 if os.path.isfile(os.path.join(path, chrome)):
                     return chrome
 
-        if sys.platform == "darwin":
-            chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-            if os.path.isfile(chrome):
-                return chrome
 
         if sys.platform == "win32":
             command = "where chrome"
@@ -250,7 +246,7 @@ class WeReadWebPage(object):
         except pyppeteer.errors.TimeoutError as ex:
             html = await self.get_html()
             html_path = "webpage.html"
-            with open(html_path, "w") as fp:
+            with open(html_path, "w", encoding="UTF-8") as fp:
                 fp.write(html)
             logging.info(
                 "[%s] Current html saved to %s" % (self.__class__.__name__, html_path)
@@ -394,7 +390,10 @@ class WeReadWebPage(object):
                 break
             await asyncio.sleep(1)
         else:
-            raise RuntimeError("Wait for creating markdown timeout")
+            # raise RuntimeError("Wait for creating markdown timeout")
+                    # Try to update markdown anyway
+            pass
+            # raise RuntimeError("Wait for creating markdown timeout")
         script = "canvasContextHandler.data.markdown;"
         result = await self._page.evaluate(script)
         if not result:
@@ -404,16 +403,26 @@ class WeReadWebPage(object):
 
     async def _check_next_page(self):
         while True:
+            result = ''
             try:
                 await self.wait_for_selector(
-                    "button.readerFooter_button", timeout=60000
+                    # "button.readerFooter_button", timeout=59000
+                    "div.readerFooter", timeout=59000
                 )
+                try:
+                    result = await self._page.evaluate(
+                        "document.getElementsByClassName('readerFooter_button')[0].innerText;"
+                    )
+                except pyppeteer.errors.ElementHandleError:
+                    logging.info("[%s] load selector ElementHandleError " % self.__class__.__name__)
+                    result = await self._page.evaluate(
+                        "document.getElementsByClassName('readerFooter_ending_title')[0].innerText;"
+                    )
+
             except pyppeteer.errors.TimeoutError:
                 logging.info("[%s] load selector timeout " % self.__class__.__name__)
                 break
-            result = await self._page.evaluate(
-                "document.getElementsByClassName('readerFooter_button')[0].innerText;"
-            )
+
             if result == "下一页":
                 logging.info("[%s] Go to next page" % self.__class__.__name__)
                 await self._page.evaluate(
@@ -426,10 +435,12 @@ class WeReadWebPage(object):
                 break
             elif result.startswith("登录"):
                 raise utils.LoginRequiredError()
+            elif result == "全 书 完":
+                break
             else:
                 raise NotImplementedError(result)
-
     def _get_chapter_url(self, chapter_id):
+        print(f"_get_chapter_url{chapter_id}")
         return "%s%sk%s" % (
             self._chapter_root_url,
             self._book_id,
